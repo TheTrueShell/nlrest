@@ -6,7 +6,9 @@ queries and execute them using the OpenAI's GPT-3.5 Turbo model.
 import os
 import json
 import argparse
-import openai
+from openai import OpenAI
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY", config['DEFAULT'].get('OpenAI_API_Key')))
 import requests
 import configparser
 
@@ -35,7 +37,7 @@ def get_rest_query_details(prompt, config):
     Returns:
         dict: The details of the REST API query including method, url, headers, body, and params.
     """
-    openai.api_key = os.getenv("OPENAI_API_KEY", config['DEFAULT'].get('OpenAI_API_Key'))
+    
     system_message = (
         "You are a REST API assistant. Convert natural language instructions "
         "into REST API query details. Respond with a JSON object that includes "
@@ -44,14 +46,12 @@ def get_rest_query_details(prompt, config):
         '"headers": {"Authorization": "Bearer YOUR_API_KEY"}, '
         '"params": {"query": "value"}, "body": null}.'
     )
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo-1106",
-        response_format={"type": "json_object"},
-        messages=[
-            {"role": "system", "content": system_message},
-            {"role": "user", "content": prompt},
-        ],
-    )
+    response = client.chat.completions.create(model="gpt-3.5-turbo-1106",
+    response_format={"type": "json_object"},
+    messages=[
+        {"role": "system", "content": system_message},
+        {"role": "user", "content": prompt},
+    ])
     return json.loads(response.choices[0].message.content)
 
 
