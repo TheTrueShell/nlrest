@@ -8,9 +8,24 @@ import json
 import argparse
 import openai
 import requests
+import configparser
 
 
-def get_rest_query_details(prompt):
+def get_config():
+    config = configparser.ConfigParser()
+    config_file = 'nlrest.ini'
+
+    if not os.path.exists(config_file):
+        config['DEFAULT'] = {'OpenAI_API_Key': 'your-api-key-here'}
+        with open(config_file, 'w') as configfile:
+            config.write(configfile)
+    else:
+        config.read(config_file)
+
+    return config
+
+
+def get_rest_query_details(prompt, config):
     """
     Generates REST API query details from a natural language prompt using OpenAI's GPT-3.5 Turbo model.
 
@@ -20,7 +35,7 @@ def get_rest_query_details(prompt):
     Returns:
         dict: The details of the REST API query including method, url, headers, body, and params.
     """
-    openai.api_key = os.getenv("OPENAI_API_KEY")
+    openai.api_key = os.getenv("OPENAI_API_KEY", config['DEFAULT'].get('OpenAI_API_Key'))
     system_message = (
         "You are a REST API assistant. Convert natural language instructions "
         "into REST API query details. Respond with a JSON object that includes "
@@ -72,25 +87,33 @@ def make_request(api_details):
 
 
 def main():
-    """
-    Main function to run the nlrest CLI tool.
-    """
+    config = get_config()
+
     parser = argparse.ArgumentParser(
         description="Natural Language to REST API Query Converter"
     )
     parser.add_argument(
-        "-p",
-        "--prompt",
-        type=str,
-        required=True,
-        help="Natural language prompt for REST API query",
+        "-p", "--prompt", type=str, required=False, 
+        help="Natural language prompt for REST API query"
+    )
+    parser.add_argument(
+        "--set-api-key", type=str, 
+        help="Set the OpenAI API key in the configuration file"
     )
 
     args = parser.parse_args()
 
-    api_query_details = get_rest_query_details(args.prompt)
+    if args.set_api_key:
+        config['DEFAULT']['OpenAI_API_Key'] = args.set_api_key
+        with open('nlrest.ini', 'w') as configfile:
+            config.write(configfile)
+        print("OpenAI API key updated in configuration file.")
+        return
+
+    api_query_details = get_rest_query_details(args.prompt, config)
     result = make_request(api_query_details)
     print(result)
+
 
 
 if __name__ == "__main__":
