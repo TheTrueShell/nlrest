@@ -27,12 +27,14 @@ def get_config():
     return config
 
 
-def get_rest_query_details(prompt, config):
+def get_rest_query_details(prompt, config, client):
     """
     Generates REST API query details from a natural language prompt using OpenAI's GPT-3.5 Turbo model.
 
     Args:
         prompt (str): The natural language prompt for generating the REST API query.
+        config (dict): The configuration object.
+        client: The OpenAI client object.
 
     Returns:
         dict: The details of the REST API query including method, url, headers, body, and params.
@@ -46,13 +48,48 @@ def get_rest_query_details(prompt, config):
         '"headers": {"Authorization": "Bearer YOUR_API_KEY"}, '
         '"params": {"query": "value"}, "body": null}.'
     )
-    response = client.chat.completions.create(model="gpt-3.5-turbo-1106",
-    response_format={"type": "json_object"},
-    messages=[
-        {"role": "system", "content": system_message},
-        {"role": "user", "content": prompt},
-    ])
-    return json.loads(response.choices[0].message.content)
+    model_name = config['DEFAULT']['Model_Name']
+    try:
+        response = client.chat.completions.create(model=model_name,
+        response_format={"type": "json_object"},
+        messages=[
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": prompt},
+        ])
+        response_data = json.loads(response.choices[0].message.content)
+        validate_response_structure(response_data)
+        return response_data
+    except Exception as e:
+        print(f"Error occurred during API call: {str(e)}")
+        return None
+
+def validate_response_structure(response_data):
+    """
+    Validates the structure of the response from the OpenAI API.
+
+    Args:
+        response_data (dict): The response data from the OpenAI API.
+
+    Raises:
+        ValueError: If the response data does not contain the expected fields.
+    """
+    expected_fields = ['method', 'url', 'headers', 'body', 'params']
+    for field in expected_fields:
+        if field not in response_data:
+            raise ValueError(f"Response data is missing the '{field}' field.")
+
+def sanitize_input(input_string):
+    """
+    Sanitizes the input string to prevent potential security vulnerabilities.
+
+    Args:
+        input_string (str): The input string to be sanitized.
+
+    Returns:
+        str: The sanitized input string.
+    """
+    # Add sanitization logic here
+    return input_string
 
 
 def make_request(api_details):
