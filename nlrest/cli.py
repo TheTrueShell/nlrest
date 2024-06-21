@@ -6,19 +6,16 @@ queries and execute them using the OpenAI's GPT-3.5 Turbo model.
 import os
 import json
 import argparse
-from openai import OpenAI
-
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY", config['DEFAULT'].get('OpenAI_API_Key')))
 import requests
 import configparser
-
+from openai import OpenAI
 
 def get_config():
     config = configparser.ConfigParser()
     config_file = 'nlrest.ini'
 
     if not os.path.exists(config_file):
-        config['DEFAULT'] = {'OpenAI_API_Key': 'your-api-key-here'}
+        config['DEFAULT'] = {'OpenAI_API_Key': 'your-api-key-here', 'Model_Name': 'gpt-3.5-turbo'}
         with open(config_file, 'w') as configfile:
             config.write(configfile)
     else:
@@ -26,6 +23,9 @@ def get_config():
 
     return config
 
+# Ensure the config is loaded before initializing the OpenAI client
+config = get_config()
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY", config['DEFAULT'].get('OpenAI_API_Key')))
 
 def get_rest_query_details(prompt, config, client):
     """
@@ -147,10 +147,12 @@ def main():
         print("OpenAI API key updated in configuration file.")
         return
 
-    api_query_details = get_rest_query_details(args.prompt, config)
-    result = make_request(api_query_details)
-    print(result)
-
+    if args.prompt:
+        api_query_details = get_rest_query_details(args.prompt, config, client)
+        result = make_request(api_query_details)
+        print(result)
+    else:
+        print("Please provide a prompt using the -p or --prompt option.")
 
 
 if __name__ == "__main__":
